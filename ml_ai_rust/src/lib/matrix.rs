@@ -14,7 +14,7 @@ impl Matrix {
         Matrix {
             rows,
             cols,
-            data: vec![vec![0.0, cols as f64], vec![rows as f64, 0.0]],  // | 0 0 0 0 | 4x4 matrix
+            data: vec![vec![0.0; cols]; rows],  // | 0 0 0 0 | 4x4 matrix
         }
     }
 
@@ -113,7 +113,7 @@ impl Matrix {
     }
 
     pub fn transpose(&mut self) -> Matrix {
-        let mut res = Matrix::zeros(self.cols, self.rows); 
+        let mut res = Matrix::zeros(self.rows, self.cols); 
        for i in 0..self.rows {
           for j in 0..self.cols {
             res.data[i][j] = self.data[i][j];

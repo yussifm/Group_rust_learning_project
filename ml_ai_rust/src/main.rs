@@ -19,13 +19,13 @@ fn main() {
         vec![1.0, 1.0], // 1,1
     ];
     let targets = vec![
-        vec![ 0.0], // 0
-        vec![ 1.0], // 1
+        vec![0.0], // 0
+        vec![1.0], // 1
         vec![1.0], // 1
         vec![0.0], // 0
     ];
 
-    let mut network = Network::new_net(vec![2, 3, 1], 0.5, SIGMOID, );
+    let mut network = Network::new_net(vec![2, 3, 1], 1.0, SIGMOID, );
     network.train(inputs, targets, 10000);
 
     println!("0 and 0: {:?}", network.feed_forward(vec![0.0, 0.0]));
