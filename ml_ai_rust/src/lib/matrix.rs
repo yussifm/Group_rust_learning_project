@@ -1,4 +1,3 @@
-use std::mem::size_of;
 use rand::{Rng, thread_rng};
 
 #[derive(Clone)]
@@ -26,8 +25,7 @@ impl Matrix {
 
         for i in 0..rows {
             for j in 0..cols {
-                res.data[i][j]
-                    = rng.gen::<f64>() * 2.0 - 1.0 // (0-1) X 2 == (0-2)-1 == -1-1;
+                res.data[i][j] = rng.gen::<f64>() * 2.0 - 1.0 // (0-1) X 2 == (0-2)-1 == -1-1;
             }
         }
 
@@ -109,7 +107,10 @@ impl Matrix {
     }
 
     pub fn map(&mut self, func: &dyn Fn(f64) -> f64) -> Matrix {
-        Matrix::from((self.data).clone().into_iter().map(|row| row.into_iter().map(|value| func(value)).collect()).collect())
+        Matrix::from((self.data).clone()
+        .into_iter().map(|row| row.into_iter()
+        .map(|value| func(value)).collect())
+        .collect())
     }
 
     pub fn transpose(&mut self) -> Matrix {
