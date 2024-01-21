@@ -1,3 +1,6 @@
+use computer_graphics_rust::run;
+
 fn main() {
-    println!("Hello, world!");
+   
+   run();
 }
