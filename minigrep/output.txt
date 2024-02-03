@@ -1,0 +1,13 @@
+================================================================
+ ========== Searching for words in any Text file =========
+ ========== word file.txt case-sensitive =========
+ ========== Eg: rust rust_docs.text y =========
+ ========== Eg: RuSt rust_docs.text N =========
+================================================================
+Searching for to
+In file poem.txt
+Are you nobody, too?
+How dreary to be somebody!
+To tell your name the livelong day
+To an admiring bog!
+================================================================
