@@ -1,4 +1,5 @@
-
+# LInk to Post
+https://os.phil-opp.com/minimal-rust-kernel/
 
 #Alternatively, we can compile it for the host system by passing additional linker arguments:
 # Linux
