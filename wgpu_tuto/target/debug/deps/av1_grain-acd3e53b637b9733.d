@@ -1,0 +1,11 @@
+D:\programming\pratice_area\Rust\Group_rust_pratice\wgpu_tuto\target\debug\deps\libav1_grain-acd3e53b637b9733.rmeta: C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\lib.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\create.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff\solver.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff\solver\util.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\parse.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\util.rs
+
+D:\programming\pratice_area\Rust\Group_rust_pratice\wgpu_tuto\target\debug\deps\av1_grain-acd3e53b637b9733.d: C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\lib.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\create.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff\solver.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff\solver\util.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\parse.rs C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\util.rs
+
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\lib.rs:
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\create.rs:
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff.rs:
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff\solver.rs:
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\diff\solver\util.rs:
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\parse.rs:
+C:\Users\coded\.cargo\registry\src\index.crates.io-6f17d22bba15001f\av1-grain-0.2.3\src\util.rs:
