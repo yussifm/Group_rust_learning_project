@@ -5,15 +5,15 @@ fn binary_extract_line(buffer: &[u8], index: &mut usize) -> RESTResult<Vec<u8>> 
     let mut output = Vec::new();
 
     // we try to read after the end of the buffer
-    if  *index >= buffer.len() {
-        return  Err(RESPError::OutOfBounds(*index));
+    if *index >= buffer.len() {
+        return Err(RESPError::OutOfBounds(*index));
     }
 
     //  If there is not enough space for \r\n
     // the buffer is definitely invalid
-    if  buffer.len() - *index - 1 < 2 {
+    if buffer.len() - *index - 1 < 2 {
         *index = buffer.len();
-        return  Err(RESPError::OutOfBounds(*index));
+        return Err(RESPError::OutOfBounds(*index));
     }
 
     let mut previous_elem: u8 = buffer[*index].clone();
@@ -35,26 +35,35 @@ fn binary_extract_line(buffer: &[u8], index: &mut usize) -> RESTResult<Vec<u8>> 
     //  we are out of bounds
     if !separator_found {
         *index = final_index;
-        return  Err(RESPError::OutOfBounds(*index));
+        return Err(RESPError::OutOfBounds(*index));
     }
 
     // Copy the bytes from the buffer to the output vector
     output.extend_from_slice(&buffer[*index..final_index - 2]);
     *index = final_index;
-     
-     
-    return  Ok(output);
 
-
+    return Ok(output);
 }
 pub fn binary_extract_line_as_string(buffer: &[u8], index: &mut usize) -> RESTResult<String> {
     let line = binary_extract_line(buffer, index)?;
     Ok(String::from_utf8(line)?)
 }
 
+// Checks that the first character of a RESP buffer is the given one and removes it.
+pub fn resp_remove_type(value: char, buffer: &[u8], index: &mut usize) -> RESTResult<()> {
+    if buffer[*index] != value as u8 {
+        return Err(RESPError::WrongType);
+    }
+    *index += 1;
+    Ok(())
+}
+
+/// TEST /////
 
 #[cfg(test)]
 mod tests {
+
+    use core::error;
 
     use super::*;
 
@@ -81,7 +90,7 @@ mod tests {
                 assert_eq!(index, 1);
             }
             _ => panic!(),
-        } 
+        }
     }
 
     #[test]
@@ -145,7 +154,26 @@ mod tests {
 
         assert_eq!(output, "OK".as_bytes());
         assert_eq!(index, 4);
+    }
 
-       
+    #[test]
+    fn test_binary_remove_type() {
+        let buffer = "+OK\r\n".as_bytes();
+        let mut index: usize = 0;
+
+        resp_remove_type('+', buffer, &mut index).unwrap();
+
+        assert_eq!(index, 1);
+    }
+
+    #[test]
+    fn test_binary_remove_type_error() {
+        let buffer = "*OK\r\n".as_bytes();
+        let mut index: usize = 0;
+
+         let  error =  resp_remove_type('+', buffer, &mut index).unwrap_err();
+
+        assert_eq!(index, 1);
+        assert_eq!(error, RESPError::WrongType);
     }
 }
