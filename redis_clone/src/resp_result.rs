@@ -3,9 +3,10 @@ use std::string::FromUtf8Error;
 
 #[derive(Debug, PartialEq)]
 pub enum RESPError {
-    WrongType,
     FromUtf8,
     OutOfBounds(usize),
+    UnKnown,
+    WrongType,
 }
 
 
@@ -15,6 +16,7 @@ impl fmt::Display for RESPError {
         match self {
             RESPError::FromUtf8 => write!(f, "Cannot convert from UTF-8"),
             RESPError::OutOfBounds(index) => write!(f, "Out of bounds at index {}", index),
+            RESPError::UnKnown => write!(f, "Unknown format for RESP string"),
             RESPError::WrongType => write!(f, "Wrong prefix for RESP type"),
         }
     }
