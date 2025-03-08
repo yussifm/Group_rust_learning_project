@@ -1,15 +1,19 @@
 use core::fmt;
 
-use crate::resp_result::{RESPError, RESTResult};
+use crate::resp_result::{RESPError, RESPLength, RESTResult};
 
 #[derive(Debug, PartialEq)]
 pub enum RESP {
+    BulkString(String),
+    Null,
     SimpleString(String),
 }
 
 impl fmt::Display for RESP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let data = match self {
+            Self::BulkString(data) => format!("${}\r\n{}\r\n", data.len(), data),
+            Self::Null => String::from("$-1\r\n"),
             Self::SimpleString(data) => format!("+{}\r\n", data),
         };
         write!(f, "{}", data)
@@ -88,6 +92,7 @@ fn parser_router(
 ) -> Option<fn(&[u8], &mut usize) -> RESTResult<RESP>> {
     match buffer[*index] {
         b'+' => Some(parse_simple_string),
+        b'$' => Some(parse_bulk_string),
         _ => None,
     }
 }
@@ -99,10 +104,50 @@ pub fn bytes_to_resp(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
             Ok(result)
         }
         None => Err(RESPError::UnKnown),
-        
     }
 }
 
+fn binary_extract_bytes(buffer: &[u8], index: &mut usize, length: usize) -> RESTResult<Vec<u8>> {
+    let mut ouput = Vec::new();
+
+    // Check if we are allowed to read length bytes
+    if *index + length > buffer.len() {
+        return Err(RESPError::OutOfBounds(*index + buffer.len()));
+    }
+
+    // Copy the bytes into the output vector
+    ouput.extend_from_slice(&buffer[*index..*index + length]);
+
+    // update the index
+    *index += length;
+
+    Ok(ouput)
+}
+
+pub fn resp_extract_length(buffer: &[u8], index: &mut usize) -> RESTResult<RESPLength> {
+    let line: String = binary_extract_line_as_string(buffer, index)?;
+    let length = line.parse()?;
+
+    Ok(length)
+}
+
+fn parse_bulk_string(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
+    resp_remove_type('$', buffer, index)?;
+
+    let length = resp_extract_length(buffer, index)?;
+    if length == -1 {
+        return Ok(RESP::Null);
+    }
+
+    if length < -1 {
+        return Err(RESPError::IncorrectLength(length));
+    }
+
+    let bytes = binary_extract_bytes(buffer, index, length as usize)?;
+    let data: String = String::from_utf8(bytes)?;
+    *index += 2;
+    Ok(RESP::BulkString(data))
+}
 
 /// TEST /////
 
@@ -253,6 +298,28 @@ mod tests {
         let error = bytes_to_resp(buffer, &mut index).unwrap_err();
 
         assert_eq!(error, RESPError::UnKnown);
+        assert_eq!(index, 0);
+    }
+
+    #[test]
+    fn test_binary_extract_bytes() {
+        let buffer = "SOMEBYTES".as_bytes();
+        let mut index: usize = 0;
+
+        let output = binary_extract_bytes(buffer, &mut index, 6).unwrap();
+
+        assert_eq!(output, "SOMEBYTES".as_bytes().to_vec());
+        assert_eq!(index, 6);
+    }
+
+    #[test]
+    fn test_binary_extract_bytes_out_of_bounds() {
+        let buffer = "SOMEBYTES".as_bytes();
+        let mut index: usize = 0;
+
+        let error = binary_extract_bytes(buffer, &mut index, 10).unwrap_err();
+
+        assert_eq!(error, RESPError::OutOfBounds(9));
         assert_eq!(index, 0);
     }
 }
