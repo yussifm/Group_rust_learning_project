@@ -4,6 +4,7 @@ use crate::resp_result::{RESPError, RESPLength, RESTResult};
 
 #[derive(Debug, PartialEq)]
 pub enum RESP {
+    Array(Vec<RESP>),
     BulkString(String),
     Null,
     SimpleString(String),
@@ -12,6 +13,14 @@ pub enum RESP {
 impl fmt::Display for RESP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let data = match self {
+            Self::Array(data) => {
+                let mut output = String::from("*");
+                output.push_str(format!("{}\r\n", data.len()).as_str());
+                for elem in data.iter() {
+                    output.push_str(elem.to_string().as_str());
+                }
+                output
+            },
             Self::BulkString(data) => format!("${}\r\n{}\r\n", data.len(), data),
             Self::Null => String::from("$-1\r\n"),
             Self::SimpleString(data) => format!("+{}\r\n", data),
@@ -93,6 +102,7 @@ fn parser_router(
     match buffer[*index] {
         b'+' => Some(parse_simple_string),
         b'$' => Some(parse_bulk_string),
+        b'*' => Some(parse_array),
         _ => None,
     }
 }
@@ -148,6 +158,33 @@ fn parse_bulk_string(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
     *index += 2;
     Ok(RESP::BulkString(data))
 }
+
+
+fn parse_array(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
+    resp_remove_type('*', buffer, index)?;
+    let length = resp_extract_length(buffer, index)?;
+
+    if length < 0 {
+        return Err(RESPError::IncorrectLength(length));
+    }
+
+    let mut data = Vec::new();
+    for _ in 0..length {
+        match parser_router(buffer, index) {
+            Some(parse_func)=> {
+                let array_element: RESP = parse_func(buffer,index)?;
+                data.push(array_element);
+
+            }
+            None => return  Err(RESPError::UnKnown),
+        }
+    }
+    Ok(RESP::Array(data))
+}
+
+
+
+
 
 /// TEST /////
 
