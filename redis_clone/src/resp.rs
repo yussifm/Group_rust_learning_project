@@ -20,7 +20,7 @@ impl fmt::Display for RESP {
                     output.push_str(elem.to_string().as_str());
                 }
                 output
-            },
+            }
             Self::BulkString(data) => format!("${}\r\n{}\r\n", data.len(), data),
             Self::Null => String::from("$-1\r\n"),
             Self::SimpleString(data) => format!("+{}\r\n", data),
@@ -159,7 +159,6 @@ fn parse_bulk_string(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
     Ok(RESP::BulkString(data))
 }
 
-
 fn parse_array(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
     resp_remove_type('*', buffer, index)?;
     let length = resp_extract_length(buffer, index)?;
@@ -171,27 +170,20 @@ fn parse_array(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
     let mut data = Vec::new();
     for _ in 0..length {
         match parser_router(buffer, index) {
-            Some(parse_func)=> {
-                let array_element: RESP = parse_func(buffer,index)?;
+            Some(parse_func) => {
+                let array_element: RESP = parse_func(buffer, index)?;
                 data.push(array_element);
-
             }
-            None => return  Err(RESPError::UnKnown),
+            None => return Err(RESPError::UnKnown),
         }
     }
     Ok(RESP::Array(data))
 }
 
-
-
-
-
 /// TEST /////
 
 #[cfg(test)]
 mod tests {
-
-    use core::error;
 
     use super::*;
 
