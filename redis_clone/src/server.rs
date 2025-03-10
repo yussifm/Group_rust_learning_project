@@ -30,7 +30,7 @@ pub fn process_request(request: RESP) -> ServerResult<RESP> {
     }
 
     let mut command = Vec::new();
-    
+
     for elem in elements.iter() {
         match elem {
             RESP::BulkString(v) => command.push(v),
@@ -39,15 +39,36 @@ pub fn process_request(request: RESP) -> ServerResult<RESP> {
             }
         }
     }
-    
+
     if command.is_empty() {
         return Err(ServerError::CommandError);
     }
 
     match command[0].to_lowercase().as_str() {
         "ping" => Ok(RESP::SimpleString(String::from("PONG"))),
-        _ => {
-            Err(ServerError::CommandError)
-        }
+        "echo" => Ok(RESP::BulkString(command[1].clone())),
+        _ => Err(ServerError::CommandError),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_precess_request_ping() {
+        let request = RESP::Array(vec![RESP::BulkString(String::from("PING"))]);
+        let output = process_request(request).unwrap();
+        assert_eq!(output, RESP::SimpleString(String::from("PONG")));
+    }
+
+    #[test]
+    fn test_process_request_echo() {
+        let request = RESP::Array(vec![
+            RESP::BulkString(String::from("ECHO")),
+            RESP::BulkString(String::from("42")),
+        ]);
+        let output = process_request(request).unwrap();
+        assert_eq!(output, RESP::BulkString(String::from("42")));
     }
 }
