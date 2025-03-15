@@ -118,7 +118,7 @@ pub fn bytes_to_resp(buffer: &[u8], index: &mut usize) -> RESTResult<RESP> {
 }
 
 fn binary_extract_bytes(buffer: &[u8], index: &mut usize, length: usize) -> RESTResult<Vec<u8>> {
-    let mut ouput = Vec::new();
+    let mut output = Vec::new();
 
     // Check if we are allowed to read length bytes
     if *index + length > buffer.len() {
@@ -126,12 +126,12 @@ fn binary_extract_bytes(buffer: &[u8], index: &mut usize, length: usize) -> REST
     }
 
     // Copy the bytes into the output vector
-    ouput.extend_from_slice(&buffer[*index..*index + length]);
+    output.extend_from_slice(&buffer[*index..*index + length]);
 
     // update the index
     *index += length;
 
-    Ok(ouput)
+    Ok(output)
 }
 
 pub fn resp_extract_length(buffer: &[u8], index: &mut usize) -> RESTResult<RESPLength> {
