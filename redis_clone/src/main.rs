@@ -1,9 +1,11 @@
 use resp::{RESP, bytes_to_resp};
 use server::process_request;
+use storage::Storage;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
+use std::sync::{Arc, Mutex};
 
 mod resp;
 mod resp_result;
@@ -15,15 +17,16 @@ mod storage_result;
 async fn main() -> std::io::Result<()> {
     let custom_address = "127.0.0.1:6379";
     let listener = TcpListener::bind(custom_address).await?;
+    
+    let storage = Arc::new(Mutex::new(Storage::new()));
     println!("Server running on {}", custom_address);
 
     loop {
         match listener.accept().await {
             Ok((mut stream, addr)) => {
                 println!("Connection accepted from: {}", addr);
-                tokio::spawn(async move {
-                    handle_connection(&mut stream).await;
-                });
+                tokio::spawn( handle_connection(stream, storage.clone()));
+              
             }
             Err(e) => {
                 println!("Error accepting connection: {}", e);
@@ -33,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     }
 }
 
-async fn handle_connection(stream: &mut TcpStream) {
+async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) {
     let mut buffer = [0; 512];
 
     loop {
@@ -51,7 +54,7 @@ async fn handle_connection(stream: &mut TcpStream) {
                     }
                 };
 
-                let response = match process_request(request) {
+                let response = match process_request(request,  storage.clone()) {
                     Ok(v) => v,
                     Err(e) => {
                         eprintln!("Error parsing command: {}", e);
