@@ -1,9 +1,11 @@
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum StorageError {
     IncorrectRequest,
     CommandNotAvailable(String),
+    CommandSyntaxError(String),
+    CommandInternalError(String),
 }
 
 
@@ -17,6 +19,12 @@ impl fmt::Display for StorageError {
             StorageError::CommandNotAvailable(c) => {
                 write!(f, "The requested command {} is not available!", c)
             }
+            StorageError::CommandSyntaxError(c)=> {
+                write!(f,"Syntax error while processing {}", c)
+            },
+            StorageError::CommandInternalError(c)=> {
+                write!(f,"Internal error while processing {}!", c)
+            },
         }
     }
 }
