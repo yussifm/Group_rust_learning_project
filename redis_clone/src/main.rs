@@ -1,6 +1,6 @@
 use resp::{RESP, bytes_to_resp};
 use server::process_request;
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 use storage::Storage;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -21,15 +21,24 @@ async fn main() -> std::io::Result<()> {
     let storage = Arc::new(Mutex::new(Storage::new()));
     println!("Server running on {}", custom_address);
 
+    let mut interval_timer = tokio::time::interval(Duration::from_millis(10));
+
     loop {
-        match listener.accept().await {
-            Ok((stream, addr)) => {
-                println!("Connection accepted from: {}", addr);
-                tokio::spawn(handle_connection(stream, storage.clone()));
+        tokio::select! {
+           connection = listener.accept() => {
+                match connection {
+                    Ok((stream, addr)) => {
+                        println!("Connection accepted from: {}", addr);
+                        tokio::spawn(handle_connection(stream, storage.clone()));
+                    }
+                    Err(e) => {
+                        println!("Error accepting connection: {}", e);
+                        continue;
+                    }
+                }
             }
-            Err(e) => {
-                println!("Error accepting connection: {}", e);
-                continue;
+            _ = interval_timer.tick() => {
+                tokio::spawn(expire_keys(storage.clone()));
             }
         }
     }
@@ -83,4 +92,9 @@ async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) 
             }
         }
     }
+}
+
+async fn expire_keys(storage: Arc<Mutex<Storage>>) {
+    let mut guard = storage.lock().unwrap();
+    guard.expire_keys();
 }
