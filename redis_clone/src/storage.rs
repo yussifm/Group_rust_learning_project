@@ -16,13 +16,19 @@ pub struct StorageData {
 }
 pub struct Storage {
     store: HashMap<String, StorageData>,
+    expiry: HashMap<String, SystemTime>,
+    active_expiry: bool,
 }
 
 impl Storage {
     pub fn new() -> Self {
         let Store: HashMap<String, StorageData> = HashMap::new();
 
-        Self { store: Store }
+        Self {
+            store: Store,
+            expiry: HashMap::<String, SystemTime>::new(),
+            active_expiry: true,
+        }
     }
 
     pub fn processs_command(&mut self, command: &Vec<String>) -> StorageResult<RESP> {
@@ -78,6 +84,27 @@ impl Storage {
             Err(_) => Err(StorageError::CommandInternalError(command.join(" "))),
         }
     }
+
+    pub fn set_active_expiry(&mut self, value: bool) {
+        self.active_expiry = value;
+    }
+
+    pub fn expire_keys(&mut self) {
+  if !self.active_expiry {
+    return;
+  }
+  let now = SystemTime::now();
+  let expired_keys: Vec<String> = self
+  .expiry
+  .iter()
+  .filter_map(|(key, &value)| if value < now { Some(key.clone())}  else {None} )
+  .collect();
+
+  for k in expired_keys {
+    self.store.remove(&k);
+    self.expiry.remove(&k);
+  }
+}
 }
 
 impl StorageData {
