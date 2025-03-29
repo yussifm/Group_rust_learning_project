@@ -12,6 +12,7 @@ mod resp_result;
 mod server;
 mod storage;
 mod storage_result;
+mod set;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
