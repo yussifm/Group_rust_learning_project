@@ -1,6 +1,8 @@
 use crate::resp::RESP;
+use crate::set::{parse_set_arguments, KeyExpiry, SetArgs};
 use crate::storage_result::{StorageError, StorageResult};
 use std::collections::HashMap;
+use std::ops::Add;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, PartialEq)]
@@ -48,13 +50,32 @@ impl Storage {
         Ok(RESP::BulkString(command[1].clone()))
     }
 
-    fn set(&mut self, key: String, value: String) -> StorageResult<String> {
-        self.store.insert(key, StorageData::from(value));
+    fn set(&mut self, key: String, value: String, args: SetArgs) -> StorageResult<String> {
+        let mut data = StorageData::from(value);
+        // self.store.insert(key, StorageData::from(value));
 
+        if let Some(value) = args.expiry {
+            let expiry = match value {
+                KeyExpiry::EX(v) => Duration::from_secs(v),
+                KeyExpiry::PX(v) => Duration::from_millis(v),
+            };
+            data.add_expiry(expiry);
+            self.expiry
+                .insert(key.clone(), SystemTime::now().add(expiry));
+        }
+
+        self.store.insert(key.clone(), data);
         Ok(String::from("Ok"))
     }
 
-    fn get(&self, key: String) -> StorageResult<Option<String>> {
+    fn get(&mut self, key: String) -> StorageResult<Option<String>> {
+        if let Some(&expiry) = self.expiry.get(&key) {
+            if SystemTime::now() >= expiry {
+                self.expiry.remove(&key);
+                self.store.remove(&key);
+                return Ok(None);
+            }
+        }
         match self.store.get(&key) {
             Some(StorageData {
                 value: StorageValue::String(v),
@@ -69,7 +90,11 @@ impl Storage {
         if command.len() != 3 {
             return Err(StorageError::CommandSyntaxError(command.join(" ")));
         }
-        let _ = self.set(command[1].clone(), command[2].clone());
+        let key = command[1].clone();
+        let value = command[2].clone();
+        let args = parse_set_arguments(&command[3..].to_vec())?;
+
+        let _ = self.set(key, value, args);
         Ok(RESP::SimpleString(String::from("Ok")))
     }
 
@@ -90,21 +115,21 @@ impl Storage {
     }
 
     pub fn expire_keys(&mut self) {
-  if !self.active_expiry {
-    return;
-  }
-  let now = SystemTime::now();
-  let expired_keys: Vec<String> = self
-  .expiry
-  .iter()
-  .filter_map(|(key, &value)| if value < now { Some(key.clone())}  else {None} )
-  .collect();
+        if !self.active_expiry {
+            return;
+        }
+        let now = SystemTime::now();
+        let expired_keys: Vec<String> = self
+            .expiry
+            .iter()
+            .filter_map(|(key, &value)| if value < now { Some(key.clone()) } else { None })
+            .collect();
 
-  for k in expired_keys {
-    self.store.remove(&k);
-    self.expiry.remove(&k);
-  }
-}
+        for k in expired_keys {
+            self.store.remove(&k);
+            self.expiry.remove(&k);
+        }
+    }
 }
 
 impl StorageData {
