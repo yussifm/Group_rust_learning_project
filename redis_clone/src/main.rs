@@ -4,7 +4,7 @@ use std::{sync::{Arc, Mutex}, time::Duration};
 use storage::Storage;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream}, select,
 };
 
 mod resp;
@@ -52,49 +52,55 @@ async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) 
     let mut buffer = [0; 512];
 
     loop {
-        match stream.read(&mut buffer).await {
-            Ok(size) if size != 0 => {
-                println!("Received: {:?}", &buffer[..size]);
-
-                let mut index: usize = 0;
-
-                let request = match bytes_to_resp(&buffer[..size].to_vec(), &mut index) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        return;
+        select! {
+             result = stream.read(&mut buffer) => {
+                match result {
+                    Ok(size) if size != 0 => {
+                        println!("Received: {:?}", &buffer[..size]);
+        
+                        let mut index: usize = 0;
+        
+                        let request = match bytes_to_resp(&buffer[..size].to_vec(), &mut index) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                                return;
+                            }
+                        };
+        
+                        let response = match process_request(request, storage.clone()) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                eprintln!("Error parsing command: {}", e);
+                                return;
+                            }
+                        };
+        
+                        // let response = RESP::SimpleString(String::from("PONG"));
+        
+                        if let Err(e) = stream.write_all(response.to_string().as_bytes()).await {
+                            eprintln!("Error writing to socket: {}", e);
+                            break;
+                        }
+                        if let Err(e) = stream.flush().await {
+                            eprintln!("Error flushing socket: {}", e);
+                            break;
+                        }
+                        println!("Sent response: {}", response);
                     }
-                };
-
-                let response = match process_request(request, storage.clone()) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        eprintln!("Error parsing command: {}", e);
-                        return;
+                    Ok(_) => {
+                        println!("Connection closed");
+                        break;
                     }
-                };
-
-                // let response = RESP::SimpleString(String::from("PONG"));
-
-                if let Err(e) = stream.write_all(response.to_string().as_bytes()).await {
-                    eprintln!("Error writing to socket: {}", e);
-                    break;
+                    Err(e) => {
+                        println!("Error reading from socket: {}", e);
+                        break;
+                    }
                 }
-                if let Err(e) = stream.flush().await {
-                    eprintln!("Error flushing socket: {}", e);
-                    break;
-                }
-                println!("Sent response: {}", response);
-            }
-            Ok(_) => {
-                println!("Connection closed");
-                break;
-            }
-            Err(e) => {
-                println!("Error reading from socket: {}", e);
-                break;
-            }
+
+             }
         }
+       
     }
 }
 
