@@ -14,6 +14,8 @@ mod storage;
 mod storage_result;
 mod set;
 mod server_result;
+mod connection;
+mod request;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

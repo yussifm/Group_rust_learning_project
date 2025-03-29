@@ -1,9 +1,16 @@
-
 use std::fmt;
+
+use crate::resp::RESP;
 
 #[derive(Debug, PartialEq)]
 pub enum ServerError {
     CommandError,
+}
+
+#[derive(Debug)]
+pub enum ServerMessage {
+    Data(RESP),
+    Error(ServerError),
 }
 
 impl fmt::Display for ServerError {
