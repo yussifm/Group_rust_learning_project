@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 use crate::connection::ConnectionMessage;
 use crate::request::Request;
 use crate::resp::RESP;
-use crate::server_result::ServerMessage;
+use crate::server_result::{ServerMessage, ServerValue};
 use crate::storage::{self, Storage};
 use crate::storage_result::{StorageError, StorageResult};
 
@@ -84,7 +84,7 @@ pub async fn process_request(request: Request, server: &mut Server)  {
     let response = storage.processs_command(&command);
     match response {
         Ok(v) => {
-            request.sender.send(ServerMessage::Data(v)).await.unwrap();
+            request.sender.send(ServerMessage::Data(ServerValue::RESP(v))).await.unwrap();
         }
         Err(e)=> (),
         

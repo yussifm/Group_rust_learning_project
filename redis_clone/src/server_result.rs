@@ -9,9 +9,16 @@ pub enum ServerError {
 
 #[derive(Debug)]
 pub enum ServerMessage {
-    Data(RESP),
+    Data(ServerValue),
     Error(ServerError),
 }
+
+#[derive(Debug)]
+pub enum ServerValue {
+    RESP(RESP),
+}
+
+
 
 impl fmt::Display for ServerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -21,4 +28,4 @@ impl fmt::Display for ServerError {
     }
 }
 
-pub type ServerResult<T> = Result<T, ServerError>;
+pub type ServerResult = Result<ServerValue, ServerError>;

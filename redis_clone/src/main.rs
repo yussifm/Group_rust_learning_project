@@ -2,7 +2,7 @@ use connection::{ConnectionError, ConnectionMessage};
 use request::Request;
 use resp::{RESP, bytes_to_resp};
 use server::{process_request, run_server, Server};
-use server_result::ServerMessage;
+use server_result::{ServerMessage, ServerValue};
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
@@ -55,9 +55,7 @@ async fn main() -> std::io::Result<()> {
                     }
                 }
             }
-            _ = interval_timer.tick() => {
-                tokio::spawn(expire_keys(storage.clone()));
-            }
+         
         }
     }
 }
@@ -127,7 +125,7 @@ async fn handle_connection(mut stream: TcpStream, server_sender: mpsc::Sender<Co
              }
              Some(response) = connection_receiver.recv() => {
                 let _ = match response {
-                    ServerMessage::Data(v) => stream.write_all(v.to_string().as_bytes()).await,
+                    ServerMessage::Data(ServerValue::RESP(v)) => stream.write_all(v.to_string().as_bytes()).await,
                     ServerMessage::Error(e) => {
                         eprintln!("Error: {}", ConnectionError::ServerError(e));
                         return;
