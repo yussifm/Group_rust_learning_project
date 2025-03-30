@@ -5,6 +5,8 @@ use crate::resp::RESP;
 #[derive(Debug, PartialEq)]
 pub enum ServerError {
     CommandError,
+    IncorrectData, 
+    StorageNotInitialized,
 }
 
 #[derive(Debug)]
@@ -23,7 +25,13 @@ pub enum ServerValue {
 impl fmt::Display for ServerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CommandError => write!(f, "Error while processing"),
+            ServerError::CommandError => write!(f, "Error while processing"),
+             ServerError::IncorrectData => {
+                writeln!(f, "Data received from stream is incorrect")
+             },
+             ServerError::StorageNotInitialized => {
+                writeln!(f, "Storage has not been initialized")
+             },
         }
     }
 }

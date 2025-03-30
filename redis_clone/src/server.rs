@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 use crate::connection::ConnectionMessage;
 use crate::request::Request;
 use crate::resp::RESP;
-use crate::server_result::{ServerMessage, ServerValue};
+use crate::server_result::{ServerError, ServerMessage, ServerValue};
 use crate::storage::{self, Storage};
 use crate::storage_result::{StorageError, StorageResult};
 
@@ -24,11 +24,10 @@ impl Server {
         self
     }
 
-    pub fn expire_keys(&mut self){
+    pub fn expire_keys(&mut self) {
         let storage = match self.storage.as_mut() {
-            Some(storage)=> storage, 
+            Some(storage) => storage,
             None => return,
-            
         };
         storage.expire_keys();
     }
@@ -53,15 +52,14 @@ pub async fn run_server(mut server: Server, mut crx: mpsc::Receiver<ConnectionMe
     }
 }
 
-pub async fn process_request(request: Request, server: &mut Server)  {
+pub async fn process_request(request: Request, server: &mut Server) {
     let elements = match &request.value {
         RESP::Array(v) => v,
         _ => {
-            panic!()
+            request.error(ServerError::IncorrectData).await;
+            return;
         }
     };
-
-  
 
     let mut command = Vec::new();
 
@@ -69,27 +67,28 @@ pub async fn process_request(request: Request, server: &mut Server)  {
         match elem {
             RESP::BulkString(v) => command.push(v.clone()),
             _ => {
-                panic!()
+                request.error(ServerError::IncorrectData).await;
+                return;
             }
         }
     }
 
     let storage = match server.storage.as_mut() {
-            Some(storage)=> storage,
-            None => panic!(),        
+        Some(storage) => storage,
+        None => {
+            request.error(ServerError::IncorrectData).await;
+            return;
+        }
     };
-
 
     // let mut guard = storage.lock().unwrap();
     let response = storage.processs_command(&command);
     match response {
         Ok(v) => {
-            request.sender.send(ServerMessage::Data(ServerValue::RESP(v))).await.unwrap();
+            request.data(ServerValue::RESP(v)).await;
         }
-        Err(e)=> (),
-        
+        Err(e) => (),
     }
-
 }
 
 // #[cfg(test)]
