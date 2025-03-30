@@ -1,21 +1,28 @@
+use request::Request;
 use resp::{RESP, bytes_to_resp};
 use server::process_request;
-use std::{sync::{Arc, Mutex}, time::Duration};
+use server_result::ServerMessage;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use storage::Storage;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream}, select,
+    net::{TcpListener, TcpStream},
+    select,
+    sync::mpsc,
 };
 
+mod connection;
+mod request;
 mod resp;
 mod resp_result;
 mod server;
+mod server_result;
+mod set;
 mod storage;
 mod storage_result;
-mod set;
-mod server_result;
-mod connection;
-mod request;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -51,23 +58,27 @@ async fn main() -> std::io::Result<()> {
 async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) {
     let mut buffer = [0; 512];
 
+    let (connection_sender, _) = mpsc::channel::<ServerMessage>(32);
+
     loop {
         select! {
              result = stream.read(&mut buffer) => {
                 match result {
                     Ok(size) if size != 0 => {
                         println!("Received: {:?}", &buffer[..size]);
-        
+
                         let mut index: usize = 0;
-        
-                        let request = match bytes_to_resp(&buffer[..size].to_vec(), &mut index) {
+                        let  resp = match bytes_to_resp(&buffer[..size].to_vec(), &mut index) {
                             Ok(v) => v,
                             Err(e) => {
-                                eprintln!("Error: {}", e);
+                                eprint!("Error: {}", e);
                                 return;
                             }
                         };
-        
+
+
+                        let request = Request { value: resp, sender: connection_sender.clone(), };
+
                         let response = match process_request(request, storage.clone()) {
                             Ok(v) => v,
                             Err(e) => {
@@ -75,9 +86,9 @@ async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) 
                                 return;
                             }
                         };
-        
+
                         // let response = RESP::SimpleString(String::from("PONG"));
-        
+
                         if let Err(e) = stream.write_all(response.to_string().as_bytes()).await {
                             eprintln!("Error writing to socket: {}", e);
                             break;
@@ -100,7 +111,6 @@ async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) 
 
              }
         }
-       
     }
 }
 
