@@ -1,9 +1,10 @@
+use connection::ConnectionMessage;
 use request::Request;
 use resp::{RESP, bytes_to_resp};
 use server::process_request;
 use server_result::ServerMessage;
 use std::{
-    sync::{Arc, Mutex},
+    sync::{ Arc, Mutex},
     time::Duration,
 };
 use storage::Storage;
@@ -30,6 +31,8 @@ async fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind(custom_address).await?;
 
     let storage = Arc::new(Mutex::new(Storage::new()));
+
+    let (server_sender, _) = mpsc::channel::<ConnectionMessage>(32);
     println!("Server running on {}", custom_address);
 
     let mut interval_timer = tokio::time::interval(Duration::from_millis(10));
@@ -40,7 +43,7 @@ async fn main() -> std::io::Result<()> {
                 match connection {
                     Ok((stream, addr)) => {
                         println!("Connection accepted from: {}", addr);
-                        tokio::spawn(handle_connection(stream, storage.clone()));
+                        tokio::spawn(handle_connection(stream, server_sender.clone()));
                     }
                     Err(e) => {
                         println!("Error accepting connection: {}", e);
@@ -55,7 +58,7 @@ async fn main() -> std::io::Result<()> {
     }
 }
 
-async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) {
+async fn handle_connection(mut stream: TcpStream, server_sender: mpsc::Sender<ConnectionMessage>) {
     let mut buffer = [0; 512];
 
     let (connection_sender, _) = mpsc::channel::<ServerMessage>(32);
@@ -78,6 +81,14 @@ async fn handle_connection(mut stream: TcpStream, storage: Arc<Mutex<Storage>>) 
 
 
                         let request = Request { value: resp, sender: connection_sender.clone(), };
+
+                        match server_sender.send(ConnectionMessage::Request(request)).await {
+                            Ok(()) => {},
+                            Err(e) => {
+                                eprint!("Error sending request: {}", e);
+                                return;
+                            }
+                        }
 
                         let response = match process_request(request, storage.clone()) {
                             Ok(v) => v,

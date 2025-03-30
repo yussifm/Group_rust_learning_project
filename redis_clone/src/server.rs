@@ -1,16 +1,48 @@
 use std::sync::{Arc, Mutex};
 
+use tokio::sync::mpsc;
+
+use crate::connection::ConnectionMessage;
 use crate::request::Request;
 use crate::resp::RESP;
 use crate::storage::{self, Storage};
 use crate::storage_result::{StorageError, StorageResult};
 
+pub struct Server {
+    pub storage: Option<Storage>,
+}
 
-pub fn process_request(request: Request, storage: Arc<Mutex<Storage>>) -> StorageResult<RESP> {
-    let elements = match request.value {
+impl Server {
+    pub fn new() -> Self {
+        Self { storage: None }
+    }
+
+    pub fn set_storage(mut self, storage: Storage) -> Self {
+        self.storage = Some(storage);
+        self
+    }
+}
+
+pub async fn run_server(mut server: Server, mut crx: mpsc::Receiver<ConnectionMessage>) {
+    loop {
+        tokio::select! {
+            Some(message) = crx.recv() => {
+                match message {
+                    ConnectionMessage::Request(request) => {
+                        process_request(request, &mut server).await;
+                    }
+
+                }
+            }
+        }
+    }
+}
+
+pub async fn process_request(request: Request, server: &mut Server) -> StorageResult<RESP> {
+    let elements = match &request.value {
         RESP::Array(v) => v,
         _ => {
-            return Err(StorageError::IncorrectRequest);
+            panic!()
         }
     };
 
@@ -24,13 +56,19 @@ pub fn process_request(request: Request, storage: Arc<Mutex<Storage>>) -> Storag
         match elem {
             RESP::BulkString(v) => command.push(v.clone()),
             _ => {
-                return Err(StorageError::IncorrectRequest);
+                panic!()
             }
         }
     }
 
-    let mut guard = storage.lock().unwrap();
-    let response = guard.processs_command(&command);
+    let storage = match server.storage.as_mut() {
+            Some(storage)=> storage,
+            None => panic!(),        
+    };
+
+
+    // let mut guard = storage.lock().unwrap();
+    let response = storage.processs_command(&command);
     response
 
     // match command[0].to_lowercase().as_str() {
