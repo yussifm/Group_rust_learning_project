@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 use crate::connection::ConnectionMessage;
 use crate::request::Request;
 use crate::resp::RESP;
+use crate::server_result::ServerMessage;
 use crate::storage::{self, Storage};
 use crate::storage_result::{StorageError, StorageResult};
 
@@ -38,7 +39,7 @@ pub async fn run_server(mut server: Server, mut crx: mpsc::Receiver<ConnectionMe
     }
 }
 
-pub async fn process_request(request: Request, server: &mut Server) -> StorageResult<RESP> {
+pub async fn process_request(request: Request, server: &mut Server)  {
     let elements = match &request.value {
         RESP::Array(v) => v,
         _ => {
@@ -46,9 +47,7 @@ pub async fn process_request(request: Request, server: &mut Server) -> StorageRe
         }
     };
 
-    if elements.is_empty() {
-        return Err(StorageError::IncorrectRequest);
-    }
+  
 
     let mut command = Vec::new();
 
@@ -69,13 +68,14 @@ pub async fn process_request(request: Request, server: &mut Server) -> StorageRe
 
     // let mut guard = storage.lock().unwrap();
     let response = storage.processs_command(&command);
-    response
+    match response {
+        Ok(v) => {
+            request.sender.send(ServerMessage::Data(v)).await.unwrap();
+        }
+        Err(e)=> (),
+        
+    }
 
-    // match command[0].to_lowercase().as_str() {
-    //     "ping" => Ok(RESP::SimpleString(String::from("PONG"))),
-    //     "echo" => Ok(RESP::BulkString(command[1].clone())),
-    //     _ => Err(ServerError::CommandError),
-    // }
 }
 
 // #[cfg(test)]

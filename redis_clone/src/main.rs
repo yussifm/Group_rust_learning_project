@@ -1,10 +1,10 @@
-use connection::ConnectionMessage;
+use connection::{ConnectionError, ConnectionMessage};
 use request::Request;
 use resp::{RESP, bytes_to_resp};
-use server::process_request;
+use server::{process_request, run_server, Server};
 use server_result::ServerMessage;
 use std::{
-    sync::{ Arc, Mutex},
+    sync::{Arc, Mutex},
     time::Duration,
 };
 use storage::Storage;
@@ -30,10 +30,14 @@ async fn main() -> std::io::Result<()> {
     let custom_address = "127.0.0.1:6379";
     let listener = TcpListener::bind(custom_address).await?;
 
-    let storage = Arc::new(Mutex::new(Storage::new()));
+    let storage = Storage::new();
+    let mut server = Server::new();
+    server = server.set_storage(storage);
 
-    let (server_sender, _) = mpsc::channel::<ConnectionMessage>(32);
+
+    let (server_sender, server_receiver) = mpsc::channel::<ConnectionMessage>(32);
     println!("Server running on {}", custom_address);
+    tokio::spawn(run_server(server, server_receiver));
 
     let mut interval_timer = tokio::time::interval(Duration::from_millis(10));
 
@@ -61,7 +65,7 @@ async fn main() -> std::io::Result<()> {
 async fn handle_connection(mut stream: TcpStream, server_sender: mpsc::Sender<ConnectionMessage>) {
     let mut buffer = [0; 512];
 
-    let (connection_sender, _) = mpsc::channel::<ServerMessage>(32);
+    let (connection_sender, mut connection_receiver) = mpsc::channel::<ServerMessage>(32);
 
     loop {
         select! {
@@ -90,25 +94,25 @@ async fn handle_connection(mut stream: TcpStream, server_sender: mpsc::Sender<Co
                             }
                         }
 
-                        let response = match process_request(request, storage.clone()) {
-                            Ok(v) => v,
-                            Err(e) => {
-                                eprintln!("Error parsing command: {}", e);
-                                return;
-                            }
-                        };
+                        // let response = match process_request(request, storage.clone()) {
+                        //     Ok(v) => v,
+                        //     Err(e) => {
+                        //         eprintln!("Error parsing command: {}", e);
+                        //         return;
+                        //     }
+                        // };
 
                         // let response = RESP::SimpleString(String::from("PONG"));
 
-                        if let Err(e) = stream.write_all(response.to_string().as_bytes()).await {
-                            eprintln!("Error writing to socket: {}", e);
-                            break;
-                        }
-                        if let Err(e) = stream.flush().await {
-                            eprintln!("Error flushing socket: {}", e);
-                            break;
-                        }
-                        println!("Sent response: {}", response);
+                        // if let Err(e) = stream.write_all(response.to_string().as_bytes()).await {
+                        //     eprintln!("Error writing to socket: {}", e);
+                        //     break;
+                        // }
+                        // if let Err(e) = stream.flush().await {
+                        //     eprintln!("Error flushing socket: {}", e);
+                        //     break;
+                        // }
+                        // println!("Sent response: {}", response);
                     }
                     Ok(_) => {
                         println!("Connection closed");
@@ -120,6 +124,16 @@ async fn handle_connection(mut stream: TcpStream, server_sender: mpsc::Sender<Co
                     }
                 }
 
+             }
+             Some(response) = connection_receiver.recv() => {
+                let _ = match response {
+                    ServerMessage::Data(v) => stream.write_all(v.to_string().as_bytes()).await,
+                    ServerMessage::Error(e) => {
+                        eprintln!("Error: {}", ConnectionError::ServerError(e));
+                        return;
+                    }
+
+                };
              }
         }
     }
