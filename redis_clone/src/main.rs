@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
     println!("Server running on {}", custom_address);
     tokio::spawn(run_server(server, server_receiver));
 
-    run_listener("127.0.0.1".to_string(), 6379, server_sender).await;
+    run_listener("127.0.0.1".to_string(), 0, server_sender).await;
 
     Ok(())
 }
